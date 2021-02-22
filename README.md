@@ -1,21 +1,11 @@
-<div align="center">
-    <a href="https://www.cyc2018.xyz"> <img src="https://badgen.net/badge/CyC/%E5%9C%A8%E7%BA%BF%E9%98%85%E8%AF%BB?icon=sourcegraph&color=4ab8a1"></a>
-    <a href="https://gitstar-ranking.com/repositories"> <img src="https://badgen.net/badge/Rank/13?icon=github&color=4ab8a1"></a>
-    <a href="https://github.com/CyC2018/CS-Notes"> <img src="https://badgen.net/github/stars/CyC2018/CS-Notes?icon=github&color=4ab8a1"></a>
-    <a href="https://github.com/CyC2018/CS-Notes"> <img src="https://badgen.net/github/forks/CyC2018/CS-Notes?icon=github&color=4ab8a1"></a>
-    <!-- <a href="assets/download.md"> <img src="https://badgen.net/badge/OvO/%E7%A6%BB%E7%BA%BF%E4%B8%8B%E8%BD%BD?icon=telegram&color=4ab8a1"></a> -->
-    <!-- <a href="assets/download.md"> <img src="https://badgen.net/badge/%e5%85%ac%e4%bc%97%e5%8f%b7/CyC2018?icon=rss&color=4ab8a1"></a> -->
-</div>
 <br>
-
 | 算法&nbsp; | 操作系统 | 网络&nbsp;|面向对象| &nbsp;数据库&nbsp;&nbsp;|&nbsp;Java&nbsp;&nbsp;|系统设计| &nbsp;&nbsp;工具&nbsp;&nbsp; |编码实践| &nbsp;&nbsp;后记&nbsp;&nbsp; |
 | :---: | :----: | :---: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | [:pencil2:](#pencil2-算法) | [:computer:](#computer-操作系统) | [:cloud:](#cloud-网络) | [:art:](#art-面向对象) | [:floppy_disk:](#floppy_disk-数据库) |[:coffee:](#coffee-java)| [:bulb:](#bulb-系统设计) |[:wrench:](#wrench-工具)| [:watermelon:](#watermelon-编码实践) |[:memo:](#memo-后记)|
 
 <br>
-
 <div align="center">
-    <img src="https://cs-notes-1256109796.cos.ap-guangzhou.myqcloud.com/githubio/LogoMakr_0zpEzN.png" width="200px">
+     forked from  <a href="https://github.com/CyC2018/CS-Notes">CyC2018/CS-Notes</a>,在此基础上增加自己的理解和内容 
 </div>
 
 <br>
@@ -92,51 +82,15 @@
 
 ### License
 
-本仓库的内容不是将网上的资料随意拼凑而来，除了少部分引用书上和技术文档的原文（这部分内容都在末尾的参考链接中加了出处），其余都是我的原创。在您引用本仓库内容或者对内容进行修改演绎时，请署名并以相同方式共享，谢谢。
+本仓库的内容fork from CyC2018/CS-Notes并加上自己理解和内容。在您引用本仓库内容或者对内容进行修改演绎时，请署名并以相同方式共享，谢谢。
 
 转载文章请在开头明显处标明该页面地址，公众号等其它转载请联系 zhengyc101@163.com。
-
-Logo：[logomakr](https://logomakr.com/)
-
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a>
 
 ### 致谢
 
-感谢以下人员对本仓库做出的贡献，当然不仅仅只有这些贡献者，这里就不一一列举了。如果你希望被添加到这个名单中，并且提交过 Issue 或者 PR，请与我联系。
+本仓库内容fork from CyC2018/CS-Notes,感谢作者整理。
 
-<a href="https://github.com/linw7">
-    <img src="https://avatars3.githubusercontent.com/u/21679154?s=400&v=4" width="50px">
+<a href="https://github.com/CyC2018">
+    作者
 </a> 
-<a href="https://github.com/g10guang">
-    <img src="https://avatars1.githubusercontent.com/u/18458140?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/Sctwang">
-    <img src="https://avatars3.githubusercontent.com/u/33345444?s=400&v=4" width="50px">
-</a> 
-<a href="https://github.com/ResolveWang">
-    <img src="https://avatars1.githubusercontent.com/u/8018776?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/crossoverJie">
-    <img src="https://avatars1.githubusercontent.com/u/15684156?s=400&v=4" width="50px">
-</a> 
-<a href="https://github.com/jy03078584">
-    <img src="https://avatars2.githubusercontent.com/u/7719370?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/kwongtailau">
-    <img src="https://avatars0.githubusercontent.com/u/22954582?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/xiangflight">
-    <img src="https://avatars2.githubusercontent.com/u/10072416?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/mafulong">
-    <img src="https://avatars1.githubusercontent.com/u/24795000?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/yanglbme">
-    <img src="https://avatars1.githubusercontent.com/u/21008209?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/OOCZC">
-    <img src="https://avatars1.githubusercontent.com/u/11623828?s=400&v=4" width="50px">
-</a>
-<a href="https://github.com/5renyuebing">
-    <img src="https://avatars1.githubusercontent.com/u/32872430?s=400&v=4" width="50px">
-</a>
