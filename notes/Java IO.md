@@ -286,13 +286,67 @@ public static void main(String[] args) throws IOException {
 - DatagramSocket：通信类
 - DatagramPacket：数据包类
 
-## 七、NIO
+## 七、BIO
+
+阻塞IO，意味着需要等待数据到来并拷贝到应用进程的缓存区才能读取即在这个需要阻塞。
+
+### IO阻塞
+
+缺省情况下java 的各类IO 都是阻塞的（阻塞的是内核态的线程而不是jvm线程）），原因是jvm是没有权限去读取文件数据，只能通过系统调用去读取。例如socket io 在进程空间中调用 `recvfrom`，其系统调用知道数据包到达且被复制到应用进程的**缓冲区**中或者发生错误时才返回，在此期间一直会等待，进程在从调用`recvfrom` 开始到它返回的整段时间内都是被阻塞的，因此被称为阻塞 I/O 模型
+
+### BIO实例-socket io
+
+```java
+   public static void main(String[] args) {
+        int port = 9090;
+        ServerSocket serverSocket = null;
+
+        try {
+            serverSocket = new ServerSocket(port);
+            while (true) {
+                //如果没有客户端连接则阻塞
+                final Socket socket = serverSocket.accept();
+                new Thread(() -> {
+                    try {
+                     
+                        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(),
+                                                                                                 "utf-8"));
+         
+                        while (bufferedReader.readLine() != null) {
+                            System.out.println(bufferedReader.readLine());
+
+                        }
+                    } catch (Exception e) {
+
+                        e.printStackTrace();
+                    }
+                    //其他处理逻辑
+                }).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (serverSocket != null) {
+                    serverSocket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+```
+
+
+
+## 八、NIO
 
 新的输入/输出 (NIO) 库是在 JDK 1.4 中引入的，弥补了原来的 I/O 的不足，提供了高速的、面向块的 I/O。
 
 ### 流与块
 
-I/O 与 NIO 最重要的区别是数据打包和传输的方式，I/O 以流的方式处理数据，而 NIO 以块的方式处理数据。
+I/O 与 NIO 最重要的区别是数据打包和传输的方式，I/O 以**流**的方式处理数据，而 NIO 以**块**（缓冲块）的方式处理数据。
 
 面向流的 I/O 一次处理一个字节数据：一个输入流产生一个字节数据，一个输出流消费一个字节数据。为流式数据创建过滤器非常容易，链接几个过滤器，以便每个过滤器只负责复杂处理机制的一部分。不利的一面是，面向流的 I/O 通常相当慢。
 
@@ -407,7 +461,7 @@ public static void fastCopy(String src, String dist) throws IOException {
 
 NIO 常常被叫做非阻塞 IO，主要是因为 NIO 在网络通信中的非阻塞特性被广泛使用。
 
-NIO 实现了 IO 多路复用中的 Reactor 模型，一个线程 Thread 使用一个选择器 Selector 通过轮询的方式去监听多个通道 Channel 上的事件，从而让一个线程就可以处理多个事件。
+NIO 实现了 IO 多路复用中的 Reactor 模型，一个线程 Thread 使用一个选择器 Selector 通过轮询的方式去监听多个通道 Channel 上的事件，从而让一个线程就可以处理多个事件（复用）。
 
 通过配置监听的通道 Channel 为非阻塞，那么当 Channel 上的 IO 事件还未到达时，就不会进入阻塞状态一直等待，而是继续轮询其它 Channel，找到 IO 事件已经到达的 Channel 执行。
 
@@ -518,11 +572,11 @@ public class NIOServer {
         serverSocket.bind(address);
 
         while (true) {
-
+            //监听事件直到只有一个事件到来
             selector.select();
             Set<SelectionKey> keys = selector.selectedKeys();
             Iterator<SelectionKey> keyIterator = keys.iterator();
-
+            //遍历时间
             while (keyIterator.hasNext()) {
 
                 SelectionKey key = keyIterator.next();
@@ -537,10 +591,11 @@ public class NIOServer {
 
                     // 这个新连接主要用于从客户端读取数据
                     sChannel.register(selector, SelectionKey.OP_READ);
-
+                   //可读
                 } else if (key.isReadable()) {
 
                     SocketChannel sChannel = (SocketChannel) key.channel();
+                    //不需要阻塞
                     System.out.println(readDataFromSocketChannel(sChannel));
                     sChannel.close();
                 }
@@ -608,7 +663,7 @@ NIO 与普通 I/O 的区别主要有以下两点：
 - NIO 是非阻塞的；
 - NIO 面向块，I/O 面向流。
 
-## 八、参考资料
+## 九、参考资料
 
 - Eckel B, 埃克尔, 昊鹏, 等. Java 编程思想 [M]. 机械工业出版社, 2002.
 - [IBM: NIO 入门](https://www.ibm.com/developerworks/cn/education/java/j-nio/j-nio.html)
