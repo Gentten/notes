@@ -477,13 +477,20 @@ NIO 实现了 IO 多路复用中的 Reactor 模型，一个线程 Thread 使用�
 Selector selector = Selector.open();
 ```
 
-#### 2. 将通道注册到选择器上
+#### 2. 打开ServerSocket通道并注册selector
 
 ```java
-ServerSocketChannel ssChannel = ServerSocketChannel.open();
-ssChannel.configureBlocking(false);
-ssChannel.register(selector, SelectionKey.OP_ACCEPT);
+ServerSocketChannel ssc = ServerSocketChannel.open();
+ssc.configureBlocking( false );
+ 
+ServerSocket ss = ssc.socket();
+InetSocketAddress address = new InetSocketAddress( ports[i] );
+ss.bind( address );
+//注册selector
+SelectionKey key = ssc.register( selector, SelectionKey.OP_ACCEPT );
 ```
+
+
 
 通道必须配置为非阻塞模式，否则使用选择器就没有任何意义了，因为如果通道在某个事件上被阻塞，那么服务器就不能响应其它事件，必须等待这个事件处理完毕才能去处理其它事件，显然这和选择器的作用背道而驰。
 
@@ -522,6 +529,7 @@ int num = selector.select();
 ```java
 Set<SelectionKey> keys = selector.selectedKeys();
 Iterator<SelectionKey> keyIterator = keys.iterator();
+//轮询
 while (keyIterator.hasNext()) {
     SelectionKey key = keyIterator.next();
     if (key.isAcceptable()) {
