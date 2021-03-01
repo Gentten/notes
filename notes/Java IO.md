@@ -293,7 +293,7 @@ public static void main(String[] args) throws IOException {
 ### IO阻塞
 
 缺省情况下java 的各类IO 都是阻塞的（阻塞的是内核态的线程而不是jvm线程）），原因是jvm是没有权限去读取文件数据，只能通过系统调用去读取。例如socket io 在进程空间中调用 `recvfrom`，其系统调用知道数据包到达且被复制到应用进程的**缓冲区**中或者发生错误时才返回，在此期间一直会等待，进程在从调用`recvfrom` 开始到它返回的整段时间内都是被阻塞的，因此被称为阻塞 I/O 模型
-
+<div align="center"> <img src="https://github.com/Gentten/notes/blob/master/notes/pics/bio.png"/> </div><br>
 ### BIO实例-socket io
 
 ```java
