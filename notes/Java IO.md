@@ -172,55 +172,142 @@ public static void readFileContent(String filePath) throws IOException {
 
 ## 五、对象操作
 
-### 序列化
+### java序列化
 
-序列化就是将一个对象转换成字节序列，方便存储和传输。
+序列化就是将一个对象转换成字节序列，方便**存储**和**传输**，如RPC。
 
 - 序列化：ObjectOutputStream.writeObject()
 - 反序列化：ObjectInputStream.readObject()
 
-不会对静态变量进行序列化，因为序列化只是保存对象的状态，静态变量属于类的状态。
+不会对**静态变量**进行序列化，因为序列化只是保存**对象**的状态，静态变量属于类的状态。
 
 ### Serializable
 
-序列化的类需要实现 Serializable 接口，它只是一个标准，没有任何方法需要实现，但是如果不去实现它的话而进行序列化，会抛出异常。
+序列化的类必须需实现 Serializable 接口，它只是一个标准，没有任何方法需要实现，但是如果不去实现它的话而进行序列化，会抛出异常。
 
 ```java
 public static void main(String[] args) throws IOException, ClassNotFoundException {
+     Book book = new Book();
+     book.setIsbn("123123");
+     book.setName("java序列化");
 
-    A a1 = new A(123, "abc");
-    String objectFile = "file/a1";
-
-    ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(objectFile));
-    objectOutputStream.writeObject(a1);
-    objectOutputStream.close();
-
-    ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(objectFile));
-    A a2 = (A) objectInputStream.readObject();
-    objectInputStream.close();
-    System.out.println(a2);
+     File file = new File("E:\\tmep\\book.txt");
+     //序列化
+     try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(file))) {
+     	objectOutputStream.writeObject(book);
+     }
+     //假设打印成纸  验证 静态字段是否被序列化
+     PDFBook.format = "纸张";
+     //反序列化
+     try (ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(file))) {
+     	Object object = objectInputStream.readObject();
+		System.out.println(object);
+     }
+//1、未实现Serializable 报异常NotSerializableException  -》序列化必须实现 Serializable 
+//2、实现Serializable Book{format='纸张',format='纸张', name='java序列化', isbn='123123'}  transient java默认情况下不序列化
+//3、静态变量不会被序列化，修改之后，反序化值不变
 }
+    
+public class Book implements Serializable {
 
-private static class A implements Serializable {
-
-    private int x;
-    private String y;
-
-    A(int x, String y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    @Override
-    public String toString() {
-        return "x = " + x + "  " + "y = " + y;
-    }
+    private static final long serialVersionUID = -6212470156629515269L;
+    /**
+     * 格式
+     */
+    public static String format = "PDF";
+    /**
+     * 书名
+     */
+    private String name;
+    /**
+     * ISBN
+     */
+    private String isbn;
+    
+    //getter and setter and toString
 }
 ```
 
-### Externalizable
+### 自定义序列化
+
+定义自己的序列化逻辑，如绕过transient
+
+#### writeObject和readObject
+
+通过在需要序列化中增加 以下两中方法，注意参数列表、返回值、修饰符是固定的
+
+- `private void writeObject(ObjectOutputStream oos) `
+- `private void readObject(ObjectInputStream ois)` 
+
+例如如下
+
+```java
+public static void main(String[] args) throws IOException, ClassNotFoundException {
+     Book book = new Book();
+     book.setIsbn("123123");
+     book.setName("java序列化");
+
+     File file = new File("E:\\tmep\\book.txt");
+     //序列化
+     try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(file))) {
+     	objectOutputStream.writeObject(book);
+     }
+     //假设打印成纸  验证 静态字段是否被序列化
+     PDFBook.format = "纸张";
+     //反序列化
+     try (ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(file))) {
+     	Object object = objectInputStream.readObject();
+		System.out.println(object);
+     }
+//1、未定义 writeObject 和 readObject Book{format='纸张',name='java序列化', isbn='123123', readers=null}  transient java默认情况下不序列化
+//2、定义 writeObject 和 readObject  Book{format='纸张',name='java序列化', isbn='123123', readers=[my]}   自定义序列化transient 依旧可以实现化    
+}
+
+public class Book implements Serializable {
+
+    private static final long serialVersionUID = -6212470156629515269L;
+    /**
+     * 格式
+     */
+    public static String format = "PDF";
+    /**
+     * 书名
+     */
+    private String name;
+    /**
+     * ISBN
+     */
+    private String isbn;
+    /**
+     * 读者 假设是瞬时状态
+     */
+    transient private List<String> readers;
+
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        // oos.defaultWriteObject();
+        oos.writeObject(name);
+        oos.writeObject(isbn);
+        oos.writeObject(readers);
+    }
+
+    private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        // ois.defaultReadObject();
+        name = (String) ois.readObject();
+        isbn = (String) ois.readObject();
+        readers = (List<String>) ois.readObject();
+    }
+
+    //getter and setter and toString
+}
+```
+
+#### Externalizable
+
 Java还提供了Externalizable接口，也可以实现它来提供自定义序列化能力。
-```
+
+Externalizable 接口
+
+```java
 public interface Externalizable extends java.io.Serializable {
     /**
      * The object implements the writeExternal method to save its contents
@@ -253,20 +340,146 @@ public interface Externalizable extends java.io.Serializable {
      */
     void readExternal(ObjectInput in) throws IOException, ClassNotFoundException;
 }
+```
+例如
+```java
+public class PDFBook implements Externalizable {
+    //省略其他重复代码 和上述代码一致
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeObject(name);
+        out.writeObject(isbn);
+        out.writeObject(readers);
+    }
 
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        name = (String) in.readObject();
+        isbn = (String) in.readObject();
+        readers = (List<String>) in.readObject();
+    }
+    //序列化的结果和定义writeObject readObject 的方式结果一致
+    //PDFBook{format='纸张', name='java序列化', isbn='123123', readers=[my]}
+}
 ```
 ### serialVersionUID
-serialVersionUID标识类的序列化id，即在序列化时会将类的serialVersionUID写入数据中，反序化时比较数据中serialVersio和指定的类中serialVersionUID，如果不一样序列化失败。
+serialVersionUID标识类的序列化id，即在序列化时会将类的serialVersionUID写入序列化数据中，反序化时比较数据中serialVersio和指定的类中serialVersionUID，如果不一样序列化失败。
 总结：serialVersionUID用于校验类版本一致性
+
+不定义serialVersionUID，JVM会自动生成一个，但是不同JVM生成serialVersionUID，导致远程调用或者移植时应版本不一致而序列化失败。
+
 ### transient
 
-transient 关键字可以使一些属性不会被序列化。
+transient 关键字可以标识属性不会被序列化。
 
-ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因为这个数组是动态扩展的，并不是所有的空间都被使用，因此就不需要所有的内容都被序列化。通过重写序列化和反序列化方法，使得可以只序列化数组中有内容的那部分数据(transient 是一种标记，默认情况下java 不会去序列化,但是可以通过重写序列化和反序列化方法来自定义序列化方式，即transient 标识的也可以被序列化)。
+ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因为这个数组是动态扩展的，并不是所有的空间都被使用，因此就不需要所有的内容都被序列化。通过重写序列化和反序列化方法，使得可以只序列化数组中有内容的那部分数据(transient 是一种标记，默认情况下java 不会去序列化,但是可以通过重写序列化(**writeObject**\ **writeExternal**)和反序列化(**readObject**\ **readExternal**)方法来自定义序列化方式，即transient 标识的也可以被序列化)。
+
+以下为`ArrayList`的代码 
 
 ```java
-private transient Object[] elementData;
+    private transient Object[] elementData;
+
+   /**
+     * Save the state of the <tt>ArrayList</tt> instance to a stream (that
+     * is, serialize it).
+     *
+     * @serialData The length of the array backing the <tt>ArrayList</tt>
+     *             instance is emitted (int), followed by all of its elements
+     *             (each an <tt>Object</tt>) in the proper order.
+     */
+    private void writeObject(java.io.ObjectOutputStream s)
+        throws java.io.IOException{
+        // Write out element count, and any hidden stuff
+        int expectedModCount = modCount;
+        s.defaultWriteObject();
+
+        // Write out size as capacity for behavioural compatibility with clone()
+        s.writeInt(size);
+
+        // Write out all elements in the proper order.
+        for (int i=0; i<size; i++) {
+            s.writeObject(elementData[i]);
+        }
+
+        if (modCount != expectedModCount) {
+            throw new ConcurrentModificationException();
+        }
+    }
+
+    /**
+     * Reconstitute the <tt>ArrayList</tt> instance from a stream (that is,
+     * deserialize it).
+     */
+    private void readObject(java.io.ObjectInputStream s)
+        throws java.io.IOException, ClassNotFoundException {
+        elementData = EMPTY_ELEMENTDATA;
+
+        // Read in size, and any hidden stuff
+        s.defaultReadObject();
+
+        // Read in capacity
+        s.readInt(); // ignored
+
+        if (size > 0) {
+            // be like clone(), allocate array based upon size not capacity
+            int capacity = calculateCapacity(elementData, size);
+            SharedSecrets.getJavaOISAccess().checkArray(s, Object[].class, capacity);
+            ensureCapacityInternal(size);
+
+            Object[] a = elementData;
+            // Read in all elements in the proper order.
+            for (int i=0; i<size; i++) {
+                a[i] = s.readObject();
+            }
+        }
+    }
+
 ```
+
+### 其他序列化技术
+
+可以与java整合，提供不同格式的序列化数据
+
+#### JSON
+
+#### XML
+
+#### Hessian
+
+#### Avro  
+
+#### kyro  
+
+#### Protobuf  
+
+### 选择与性能比较
+
+#### 选择
+
+##### 原则
+
+1. 序列化空间开销，也就是序列化产生的结果大小，这个影响到传输的性能
+2. 序列化过程中消耗的时长，序列化消耗时间过长影响到业务的响应时间
+3.  序列化协议是否支持跨平台，跨语言。因为现在的架构更加灵活，如果存在异构系统通信
+   需求，那么这个是必须要考虑的
+4. 可扩展性/兼容性，在实际业务开发中，系统往往需要随着需求的快速迭代来实现快速更新，
+   这就要求我们采用的序列化协议基于良好的可扩展性/兼容性，比如在现有的序列化数据结
+   构中新增一个业务字段，不会影响到现有的服务
+5.  技术的流行程度，越流行的技术意味着使用的公司多，那么很多坑都已经淌过并且得到了
+   解决，技术解决方案也相对成熟
+6. 学习难度和易用性
+
+##### 选型建议
+
+- 对性能要求不高的场景，可以采用基于 XML 的 SOAP 协议
+- 对性能和间接性有比较高要求的场景，那么 Hessian、 Protobuf、 Thrift、 Avro 都可以。
+-  基于前后端分离，或者独立的对外的 api 服务，选用 JSON 是比较好的，对于调试、可读
+  性都友好
+-  Avro 设计理念偏于动态类型语言，那么这类的场景使用 Avro 是可以的  
+
+#### 性能比较
+
+参考https://github.com/eishay/jvm-serializers/wiki
 
 ## 六、网络操作
 
