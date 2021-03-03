@@ -218,6 +218,46 @@ private static class A implements Serializable {
 }
 ```
 
+### Externalizable
+Java还提供了Externalizable接口，也可以实现它来提供自定义序列化能力。
+```
+public interface Externalizable extends java.io.Serializable {
+    /**
+     * The object implements the writeExternal method to save its contents
+     * by calling the methods of DataOutput for its primitive values or
+     * calling the writeObject method of ObjectOutput for objects, strings,
+     * and arrays.
+     *
+     * @serialData Overriding methods should use this tag to describe
+     *             the data layout of this Externalizable object.
+     *             List the sequence of element types and, if possible,
+     *             relate the element to a public/protected field and/or
+     *             method of this Externalizable class.
+     *
+     * @param out the stream to write the object to
+     * @exception IOException Includes any I/O exceptions that may occur
+     */
+    void writeExternal(ObjectOutput out) throws IOException;
+
+    /**
+     * The object implements the readExternal method to restore its
+     * contents by calling the methods of DataInput for primitive
+     * types and readObject for objects, strings and arrays.  The
+     * readExternal method must read the values in the same sequence
+     * and with the same types as were written by writeExternal.
+     *
+     * @param in the stream to read data from in order to restore the object
+     * @exception IOException if I/O errors occur
+     * @exception ClassNotFoundException If the class for an object being
+     *              restored cannot be found.
+     */
+    void readExternal(ObjectInput in) throws IOException, ClassNotFoundException;
+}
+
+```
+### serialVersionUID
+serialVersionUID标识类的序列化id，即在序列化时会将类的serialVersionUID写入数据中，反序化时比较数据中serialVersio和指定的类中serialVersionUID，如果不一样序列化失败。
+总结：serialVersionUID用于校验类版本一致性
 ### transient
 
 transient 关键字可以使一些属性不会被序列化。
