@@ -222,7 +222,7 @@ private static class A implements Serializable {
 
 transient 关键字可以使一些属性不会被序列化。
 
-ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因为这个数组是动态扩展的，并不是所有的空间都被使用，因此就不需要所有的内容都被序列化。通过重写序列化和反序列化方法，使得可以只序列化数组中有内容的那部分数据。
+ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因为这个数组是动态扩展的，并不是所有的空间都被使用，因此就不需要所有的内容都被序列化。通过重写序列化和反序列化方法，使得可以只序列化数组中有内容的那部分数据(transient 是一种标记，默认情况下java 不会去序列化,但是可以通过重写序列化和反序列化方法来自定义序列化方式，即transient 标识的也可以被序列化)。
 
 ```java
 private transient Object[] elementData;
