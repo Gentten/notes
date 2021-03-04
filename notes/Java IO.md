@@ -230,7 +230,7 @@ public class Book implements Serializable {
 
 ### 自定义序列化
 
-定义自己的序列化逻辑，如绕过transient
+定义自己的序列化逻辑覆盖默认的序列化，如绕过transient
 
 #### writeObject和readObject
 
@@ -362,9 +362,238 @@ public class PDFBook implements Externalizable {
     //PDFBook{format='纸张', name='java序列化', isbn='123123', readers=[my]}
 }
 ```
+#### 源码分析
+
+`objectOutputStream.writeObject(Object)`中根据不同类型去执行不同的序列化方法。对于普通对象执行`writeOrdinaryObject`，在`writeOrdinaryObject`中判断其是`Externalizable `还是`Serializable`，根据源码分析对于`Externalizable `则是直接调用`writeExternal`方法 而`serializable`则通过`ObjectStreamClass` 获取类定义的`writeObjectMethod or readObject `方法 如果没有定义则使用`ObjectStreamClass` 指定的默认的方法`defaultWriteFields`.同理读的时候也相似。
+
+```java
+//objectOutputStream.writeOrdinaryObject 根据不同条件
+if (desc.isExternalizable() && !desc.isProxy()) {
+	 writeExternalData((Externalizable) obj);
+} else {
+	 writeSerialData(obj, desc);
+}
+
+//ObjectStreamClass  构造器代码片段 序列化核心
+if (serializable) {
+    AccessController.doPrivileged(new PrivilegedAction<Void>() {
+        public Void run() {
+            if (isEnum) {
+                suid = Long.valueOf(0);
+                fields = NO_FIELDS;
+                return null;
+            }
+            if (cl.isArray()) {
+                fields = NO_FIELDS;
+                return null;
+            }
+            //序列化id
+            suid = getDeclaredSUID(cl);
+            try {
+                //获取序列化字段
+                fields = getSerialFields(cl);
+                computeFieldOffsets();
+            } catch (InvalidClassException e) {
+                serializeEx = deserializeEx =
+                    new ExceptionInfo(e.classname, e.getMessage());
+                fields = NO_FIELDS;
+            }
+
+            if (externalizable) {
+                cons = getExternalizableConstructor(cl);
+            } else {
+                cons = getSerializableConstructor(cl);
+                //获取序列化和反序列方法
+                writeObjectMethod = getPrivateMethod(cl, "writeObject",
+                    new Class<?>[] { ObjectOutputStream.class },
+                    Void.TYPE);
+                readObjectMethod = getPrivateMethod(cl, "readObject",
+                    new Class<?>[] { ObjectInputStream.class },
+                    Void.TYPE);
+                //没有数据是执行方法
+                readObjectNoDataMethod = getPrivateMethod(
+                    cl, "readObjectNoData", null, Void.TYPE);
+                hasWriteObjectData = (writeObjectMethod != null);
+            }
+            domains = getProtectionDomains(cons, cl);
+            //获的序列化时替换和反序化替换 
+            writeReplaceMethod = getInheritableMethod(
+                cl, "writeReplace", null, Object.class);
+            readResolveMethod = getInheritableMethod(
+                cl, "readResolve", null, Object.class);
+            return null;
+        }
+    });
+} else {
+    suid = Long.valueOf(0);
+    fields = NO_FIELDS;
+}
+//以写为例 
+ private void writeSerialData(Object obj, ObjectStreamClass desc) throws IOException {
+        //向父类递归获取类的所有序列化相关信息 
+        ObjectStreamClass.ClassDataSlot[] slots = desc.getClassDataLayout();
+        //遍历可序列化类
+        for (int i = 0; i < slots.length; i++) {
+            ObjectStreamClass slotDesc = slots[i].desc;
+            
+            if (slotDesc.hasWriteObjectMethod()) {
+               //....
+                try {
+                    curContext = new SerialCallbackContext(obj, slotDesc);
+                    //BlockDataOutputStream 
+                    bout.setBlockDataMode(true);
+                    slotDesc.invokeWriteObject(obj, this);
+                    bout.setBlockDataMode(false);
+                    bout.writeByte(TC_ENDBLOCKDATA);
+                }
+               //...
+            } else {
+                //否则默认序列化逻辑
+                defaultWriteFields(obj, slotDesc);
+            }
+        }
+    }
+ //默认的序列化方法
+ private void defaultWriteFields(Object obj, ObjectStreamClass desc)throws IOException {
+        Class<?> cl = desc.forClass();
+        //序列化检查
+        desc.getPrimFieldValues(obj, primVals);
+        bout.write(primVals, 0, primDataSize, false);
+        //遍历所有序列化字段进行序列化
+        ObjectStreamField[] fields = desc.getFields(false);
+        Object[] objVals = new Object[desc.getNumObjFields()];
+        int numPrimFields = fields.length - objVals.length;
+        desc.getObjFieldValues(obj, objVals);
+        for (int i = 0; i < objVals.length; i++) {
+           //dubug 打印
+            try {
+                writeObject0(objVals[i],fields[numPrimFields + i].isUnshared());
+            }
+            //异常处理
+        }
+    }
+
+```
+
+除去writeObject和readObject 方法之外 serializable 还提供 readObjectNoData（空数据时如何读取）、writeReplace（写替换）、readResolve（读替换）例如 通过readResolve指定反序列化的最终处理和返回结果来规避反序列化攻击单例对象。
+
+写顺序   [writeReplace]-> [writeObject/writeExternal]
+
+读顺序   [readObject/readExternal]->[readObjectNoData(只在 SerializableData中 )] ->[readResolve]  
+
+在获取类的序列化信息时，会一直到**最近不可序列化的类**为止,即**父类没有被序列化标识是无法被序列化**的，且**被不能序列化隔开可的可序列化父类也不会被序列化**。
+
+```java
+ private ClassDataSlot[] getClassDataLayout0() throws InvalidClassException {
+    ArrayList<ClassDataSlot> slots = new ArrayList<>();
+    Class<?> start = cl, end = cl;
+
+    //递归获取
+    // locate closest non-serializable superclass
+    while (end != null && Serializable.class.isAssignableFrom(end)) {
+        end = end.getSuperclass();
+    }
+
+    HashSet<String> oscNames = new HashSet<>(3);
+
+    for (ObjectStreamClass d = this; d != null; d = d.superDesc) {
+        if (oscNames.contains(d.name)) {
+            throw new InvalidClassException("Circular reference.");
+        } else {
+            oscNames.add(d.name);
+        }
+
+        // search up inheritance hierarchy for class with matching name
+        String searchName = (d.cl != null) ? d.cl.getName() : d.name;
+        Class<?> match = null;
+        for (Class<?> c = start; c != end; c = c.getSuperclass()) {
+            if (searchName.equals(c.getName())) {
+                match = c;
+                break;
+            }
+        }
+
+        // add "no data" slot for each unmatched class below match
+        if (match != null) {
+            for (Class<?> c = start; c != match; c = c.getSuperclass()) {
+                slots.add(new ClassDataSlot(
+                    ObjectStreamClass.lookup(c, true), false));
+            }
+            start = match.getSuperclass();
+        }
+
+        // record descriptor/class pairing
+        slots.add(new ClassDataSlot(d.getVariantFor(match), true));
+    }
+
+    // add "no data" slot for any leftover unmatched classes
+    for (Class<?> c = start; c != end; c = c.getSuperclass()) {
+        slots.add(new ClassDataSlot(
+            ObjectStreamClass.lookup(c, true), false));
+    }
+
+    // order slots from superclass -> subclass
+    Collections.reverse(slots);
+    return slots.toArray(new ClassDataSlot[slots.size()]);
+} 
+```
+默认序列化两种方式获取序列化字段
+
+1. getDeclaredSerialFields    定义**serialPersistentFields**字段指定的序列化字段
+2. getDefaultSerialFields  获取非**STATIC**和非**TRANSIENT**字段
+
+```java
+//  遍历serialPersistentFields字段指定的序列化字段
+private static ObjectStreamField[] getDeclaredSerialFields(Class<?> cl)throws InvalidClassException {
+        ObjectStreamField[] serialPersistentFields = null;
+        try {
+            Field f = cl.getDeclaredField("serialPersistentFields");
+            int mask = Modifier.PRIVATE | Modifier.STATIC | Modifier.FINAL;
+            if ((f.getModifiers() & mask) == mask) {
+                f.setAccessible(true);
+                serialPersistentFields = (ObjectStreamField[]) f.get(null);
+            }
+        } catch (Exception ex) {
+        }
+        //....
+        for (int i = 0; i < serialPersistentFields.length; i++) {
+            ObjectStreamField spf = serialPersistentFields[i];
+            String fname = spf.getName();
+            //...
+            try {
+                Field f = cl.getDeclaredField(fname);
+                if ((f.getType() == spf.getType()) &&((f.getModifiers() & Modifier.STATIC) == 0)){
+                    boundFields[i] =
+                        new ObjectStreamField(f, spf.isUnshared(), true);
+                }
+            } 
+            //...
+        }
+        return boundFields;
+    }
+
+//默认获取的序列化字段 
+private static ObjectStreamField[] getDefaultSerialFields(Class<?> cl) {
+    Field[] clFields = cl.getDeclaredFields();
+    ArrayList<ObjectStreamField> list = new ArrayList<>();
+    int mask = Modifier.STATIC | Modifier.TRANSIENT;
+
+    for (int i = 0; i < clFields.length; i++) {
+        //获取非静态的非TRANSIENT
+        if ((clFields[i].getModifiers() & mask) == 0) {
+            list.add(new ObjectStreamField(clFields[i], false, true));
+        }
+    }
+    int size = list.size();
+    return (size == 0) ? NO_FIELDS :
+        list.toArray(new ObjectStreamField[size]);
+}
+```
+
 ### serialVersionUID
+
 serialVersionUID标识类的序列化id，即在序列化时会将类的serialVersionUID写入序列化数据中，反序化时比较数据中serialVersio和指定的类中serialVersionUID，如果不一样序列化失败。
-总结：serialVersionUID用于校验类版本一致性
+总结：serialVersionUID用于**校验类版本一致性**
 
 不定义serialVersionUID，JVM会自动生成一个，但是不同JVM生成serialVersionUID，导致远程调用或者移植时应版本不一致而序列化失败。
 
@@ -392,10 +621,8 @@ ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因�
         // Write out element count, and any hidden stuff
         int expectedModCount = modCount;
         s.defaultWriteObject();
-
         // Write out size as capacity for behavioural compatibility with clone()
         s.writeInt(size);
-
         // Write out all elements in the proper order.
         for (int i=0; i<size; i++) {
             s.writeObject(elementData[i]);
@@ -413,10 +640,8 @@ ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因�
     private void readObject(java.io.ObjectInputStream s)
         throws java.io.IOException, ClassNotFoundException {
         elementData = EMPTY_ELEMENTDATA;
-
         // Read in size, and any hidden stuff
         s.defaultReadObject();
-
         // Read in capacity
         s.readInt(); // ignored
 
@@ -425,7 +650,6 @@ ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因�
             int capacity = calculateCapacity(elementData, size);
             SharedSecrets.getJavaOISAccess().checkArray(s, Object[].class, capacity);
             ensureCapacityInternal(size);
-
             Object[] a = elementData;
             // Read in all elements in the proper order.
             for (int i=0; i<size; i++) {
@@ -435,6 +659,8 @@ ArrayList 中存储数据的数组 elementData 是用 transient 修饰的，因�
     }
 
 ```
+
+
 
 ### 其他序列化技术
 
